@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  murmurnet:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: murmurnet
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./evaluation:/app/evaluation
+      - ./models:/app/models
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

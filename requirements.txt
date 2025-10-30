@@ -1,0 +1,41 @@
+# Core dependencies
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# LLM and embeddings
+transformers==4.36.2
+torch==2.1.2
+accelerate==0.25.0
+sentence-transformers==2.3.1
+bitsandbytes==0.41.3
+
+# Vector databases
+faiss-cpu==1.7.4
+chromadb==0.4.22
+
+# Wikipedia ZIM processing
+libzim==3.4.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
+
+# Utilities
+python-dotenv==1.0.0
+loguru==0.7.2
+aiofiles==23.2.1
+httpx==0.26.0
+tenacity==8.2.3
+
+# Evaluation
+datasets==2.16.1
+evaluate==0.4.1
+scikit-learn==1.4.0
+numpy==1.26.3
+pandas==2.1.4
+
+# Development
+pytest==7.4.4
+pytest-asyncio==0.23.3
+black==23.12.1
+ruff==0.1.11
