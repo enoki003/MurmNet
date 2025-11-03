@@ -117,8 +117,16 @@ class BaseBenchmark(ABC):
         results = []
         total_score = 0.0
         
+        total_questions = len(dataset)
+
         for i, question in enumerate(tqdm(dataset, desc=f"{self.benchmark_name}")):
             try:
+                question_preview = question["question"][:80].replace("\n", " ")
+                logger.info(
+                    f"[{self.benchmark_name}] Question {i + 1}/{total_questions} "
+                    f"starting: {question_preview}"
+                )
+
                 # Generate answer
                 response = await self.orchestrator.process_query(question["question"])
                 
@@ -146,6 +154,11 @@ class BaseBenchmark(ABC):
                 results.append(result)
                 total_score += score
                 
+                logger.info(
+                    f"[{self.benchmark_name}] Question {i + 1}/{total_questions} "
+                    f"completed with score {score:.2f}"
+                )
+
                 # Save intermediate results
                 if save_intermediate and (i + 1) % 10 == 0:
                     self._save_intermediate_results(results, i + 1)

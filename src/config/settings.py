@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class LogLevel(str, Enum):
@@ -47,9 +47,11 @@ class SystemConfig(BaseSettings):
     log_level: LogLevel = Field(default=LogLevel.INFO)
     log_dir: Path = Field(default=Path("./logs"))
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 class ModelConfig(BaseSettings):
@@ -65,9 +67,11 @@ class ModelConfig(BaseSettings):
     embedding_device: ModelDevice = Field(default=ModelDevice.CUDA)
     embedding_batch_size: int = Field(default=32)
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 class VectorDBConfig(BaseSettings):
@@ -78,9 +82,11 @@ class VectorDBConfig(BaseSettings):
     vector_db_dimension: int = Field(default=1024)
     vector_db_top_k: int = Field(default=5)
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 class MemoryConfig(BaseSettings):
@@ -90,9 +96,11 @@ class MemoryConfig(BaseSettings):
     long_term_memory_top_k: int = Field(default=3)
     experience_memory_top_k: int = Field(default=3)
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 class KnowledgeBaseConfig(BaseSettings):
@@ -102,9 +110,11 @@ class KnowledgeBaseConfig(BaseSettings):
     chunk_size: int = Field(default=512)
     chunk_overlap: int = Field(default=50)
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 class BlackboardConfig(BaseSettings):
@@ -113,9 +123,11 @@ class BlackboardConfig(BaseSettings):
     blackboard_max_entries: int = Field(default=1000)
     blackboard_retention_hours: int = Field(default=24)
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 class APIConfig(BaseSettings):
@@ -125,9 +137,11 @@ class APIConfig(BaseSettings):
     api_port: int = Field(default=8000)
     api_workers: int = Field(default=1)
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 class AgentConfig(BaseSettings):
@@ -137,9 +151,11 @@ class AgentConfig(BaseSettings):
     agent_timeout_seconds: int = Field(default=60)
     max_parallel_agents: int = Field(default=3)
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 class EvaluationConfig(BaseSettings):
@@ -148,9 +164,11 @@ class EvaluationConfig(BaseSettings):
     evaluation_output_dir: Path = Field(default=Path("./evaluation/results"))
     benchmark_data_dir: Path = Field(default=Path("./evaluation/benchmarks"))
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 class Config:

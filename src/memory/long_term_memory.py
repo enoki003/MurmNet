@@ -175,10 +175,8 @@ class LongTermMemory:
             # Convert memories to dict with datetime handling
             memories_data = []
             for memory in self.memories:
-                mem_dict = memory.dict()
-                # Convert datetime to ISO string
-                if 'timestamp' in mem_dict and isinstance(mem_dict['timestamp'], datetime):
-                    mem_dict['timestamp'] = mem_dict['timestamp'].isoformat()
+                # Use Pydantic's JSON dump mode to ensure datetimes serialize cleanly
+                mem_dict = memory.model_dump(mode="json")
                 memories_data.append(mem_dict)
             
             with open(memories_file, 'w', encoding='utf-8') as f:

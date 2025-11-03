@@ -226,10 +226,7 @@ class ExperienceMemory:
             # Convert experiences to dict with datetime handling
             experiences_data = []
             for experience in self.experiences:
-                exp_dict = experience.dict()
-                # Convert datetime to ISO string
-                if 'timestamp' in exp_dict and isinstance(exp_dict['timestamp'], datetime):
-                    exp_dict['timestamp'] = exp_dict['timestamp'].isoformat()
+                exp_dict = experience.model_dump(mode="json")
                 experiences_data.append(exp_dict)
             
             with open(experiences_file, 'w', encoding='utf-8') as f:
