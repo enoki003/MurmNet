@@ -12,7 +12,6 @@ from loguru import logger
 
 try:
     from libzim.reader import Archive
-    from libzim.search import Query, Searcher
     ZIM_AVAILABLE = True
 except ImportError:
     logger.warning("libzim not available. ZIM parsing will be disabled.")
@@ -80,7 +79,8 @@ class ZIMParser:
         try:
             self.archive = Archive(str(self.zim_path))
             logger.info(f"Opened ZIM archive: {self.zim_path}")
-            logger.info(f"Archive contains {self.archive.entry_count} entries")
+            logger.info(f"Archive contains {self.archive.all_entry_count} entries")
+            logger.info(f"Article count: {self.archive.article_count}")
         except Exception as e:
             logger.error(f"Failed to open ZIM archive: {e}")
             self.archive = None
@@ -192,7 +192,7 @@ class ZIMParser:
         Get article content by URL.
         
         Args:
-            url: Article URL
+            url: Article URL (path)
             
         Returns:
             Article text or None if not found
@@ -201,6 +201,9 @@ class ZIMParser:
             return None
         
         try:
+            if not self.archive.has_entry_by_path(url):
+                return None
+            
             entry = self.archive.get_entry_by_path(url)
             if entry.is_redirect:
                 entry = entry.get_redirect_entry()
@@ -232,22 +235,28 @@ class ZIMParser:
         
         processed = 0
         
-        for entry_id in range(self.archive.entry_count):
+        for entry_id in range(self.archive.all_entry_count):
             if max_articles and processed >= max_articles:
                 break
             
             try:
-                entry = self.archive.get_entry_by_id(entry_id)
+                entry = self.archive._get_entry_by_id(entry_id)
                 
-                # Skip non-article entries
-                if not entry.is_article:
-                    continue
-                
-                # Get article content
+                # Skip redirects
                 if entry.is_redirect:
                     continue
                 
-                item = entry.get_item()
+                # Get item
+                try:
+                    item = entry.get_item()
+                except:
+                    # Not an article item (maybe metadata or image)
+                    continue
+                
+                # Check if it's HTML content (article)
+                if item.mimetype != 'text/html':
+                    continue
+                
                 html_content = bytes(item.content).decode('utf-8')
                 
                 # Clean and extract text
@@ -271,14 +280,14 @@ class ZIMParser:
                         logger.info(f"Processed {processed} articles")
             
             except Exception as e:
-                logger.error(f"Error processing entry {entry_id}: {e}")
+                logger.debug(f"Skipping entry {entry_id}: {e}")
                 continue
         
         logger.info(f"Finished processing {processed} articles")
     
     def search_articles(self, query: str, max_results: int = 10) -> List[Dict[str, str]]:
         """
-        Search for articles matching a query.
+        Search for articles matching a query using title-based search.
         
         Args:
             query: Search query
@@ -290,21 +299,30 @@ class ZIMParser:
         if not self.archive or not ZIM_AVAILABLE:
             return []
         
+        # Simple title-based search since fulltext search may not be available
+        results = []
+        query_lower = query.lower()
+        
         try:
-            searcher = Searcher(self.archive)
-            search_query = Query().set_query(query)
-            search = searcher.search(search_query)
-            
-            results = []
-            for i in range(min(search.getEstimatedMatches(), max_results)):
+            # Iterate through entries and match by title
+            for entry_id in range(min(self.archive.all_entry_count, 10000)):
+                if len(results) >= max_results:
+                    break
+                
                 try:
-                    entry = self.archive.get_entry_by_path(search.getResult(i))
-                    results.append({
-                        "title": entry.title,
-                        "url": entry.path,
-                    })
-                except Exception as e:
-                    logger.error(f"Error getting search result {i}: {e}")
+                    entry = self.archive._get_entry_by_id(entry_id)
+                    
+                    # Skip redirects
+                    if entry.is_redirect:
+                        continue
+                    
+                    # Check if title matches query
+                    if query_lower in entry.title.lower():
+                        results.append({
+                            "title": entry.title,
+                            "url": entry.path,
+                        })
+                except:
                     continue
             
             return results

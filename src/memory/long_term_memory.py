@@ -4,6 +4,7 @@ Stores and retrieves important information from past conversations.
 """
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -171,10 +172,14 @@ class LongTermMemory:
         memories_file = self.storage_path / "memories.json"
         
         try:
-            # Convert memories to dict
-            memories_data = [
-                memory.dict() for memory in self.memories
-            ]
+            # Convert memories to dict with datetime handling
+            memories_data = []
+            for memory in self.memories:
+                mem_dict = memory.dict()
+                # Convert datetime to ISO string
+                if 'timestamp' in mem_dict and isinstance(mem_dict['timestamp'], datetime):
+                    mem_dict['timestamp'] = mem_dict['timestamp'].isoformat()
+                memories_data.append(mem_dict)
             
             with open(memories_file, 'w', encoding='utf-8') as f:
                 json.dump(memories_data, f, ensure_ascii=False, indent=2)

@@ -98,23 +98,21 @@ class PlannerAgent(BaseAgent):
                     include_plan=True,
                 )
         
-        # Prepare prompt
+        # Prepare prompt with experience context included in the main content
         context = {
             "task_summary": task_summary,
             "keywords": ", ".join(keyword_list) if isinstance(keyword_list, list) else str(keyword_list),
         }
         
+        # Combine task summary with experience context
+        user_content = task_summary
+        if similar_experiences_text:
+            user_content += similar_experiences_text
+        
         messages = self._format_prompt(
-            user_content=task_summary,
+            user_content=user_content,
             context=context,
         )
-        
-        # Add experience context if available
-        if similar_experiences_text:
-            messages.append({
-                "role": "user",
-                "content": similar_experiences_text,
-            })
         
         # Generate plan
         response = await self._generate_response(messages)

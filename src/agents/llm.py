@@ -10,6 +10,7 @@ import torch
 from loguru import logger
 from transformers import (
     AutoModelForCausalLM,
+    AutoModelForSeq2SeqLM,
     AutoTokenizer,
     BitsAndBytesConfig,
 )
@@ -81,15 +82,44 @@ class LanguageModel:
             # Get quantization config
             quantization_config = self._get_quantization_config()
             
-            # Load model
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                cache_dir=str(config.model.model_cache_dir),
-                quantization_config=quantization_config,
-                device_map="auto" if self.device == "cuda" else None,
-                trust_remote_code=True,
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-            )
+            # Detect model type and load appropriately
+            # T5 models use Seq2SeqLM, most others use CausalLM
+            try:
+                if "t5" in self.model_name.lower() or "flan" in self.model_name.lower():
+                    logger.info("Loading as Seq2Seq model (T5/FLAN)")
+                    self.model = AutoModelForSeq2SeqLM.from_pretrained(
+                        self.model_name,
+                        cache_dir=str(config.model.model_cache_dir),
+                        quantization_config=quantization_config,
+                        device_map="auto" if self.device == "cuda" else None,
+                        trust_remote_code=True,
+                        torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                    )
+                else:
+                    logger.info("Loading as Causal LM")
+                    self.model = AutoModelForCausalLM.from_pretrained(
+                        self.model_name,
+                        cache_dir=str(config.model.model_cache_dir),
+                        quantization_config=quantization_config,
+                        device_map="auto" if self.device == "cuda" else None,
+                        trust_remote_code=True,
+                        torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                    )
+            except Exception as model_error:
+                logger.warning(f"Failed with detected type, trying alternative: {model_error}")
+                # Try the other type
+                try:
+                    self.model = AutoModelForSeq2SeqLM.from_pretrained(
+                        self.model_name,
+                        cache_dir=str(config.model.model_cache_dir),
+                        quantization_config=quantization_config,
+                        device_map="auto" if self.device == "cuda" else None,
+                        trust_remote_code=True,
+                        torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                    )
+                except:
+                    # If that fails too, raise the original error
+                    raise model_error
             
             # Move to device if not using auto device mapping
             if self.device != "cuda":

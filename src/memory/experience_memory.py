@@ -4,6 +4,7 @@ Stores and retrieves past task execution experiences.
 """
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -222,10 +223,14 @@ class ExperienceMemory:
         experiences_file = self.storage_path / "experiences.json"
         
         try:
-            # Convert experiences to dict
-            experiences_data = [
-                experience.dict() for experience in self.experiences
-            ]
+            # Convert experiences to dict with datetime handling
+            experiences_data = []
+            for experience in self.experiences:
+                exp_dict = experience.dict()
+                # Convert datetime to ISO string
+                if 'timestamp' in exp_dict and isinstance(exp_dict['timestamp'], datetime):
+                    exp_dict['timestamp'] = exp_dict['timestamp'].isoformat()
+                experiences_data.append(exp_dict)
             
             with open(experiences_file, 'w', encoding='utf-8') as f:
                 json.dump(experiences_data, f, ensure_ascii=False, indent=2)

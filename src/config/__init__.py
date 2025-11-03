@@ -1,6 +1,6 @@
 """Configuration package initialization."""
 
-from src.config.settings import config, Config
+from src.config.settings import config, Config, ModelQuantization
 from src.config.agent_config import (
     AGENT_REGISTRY,
     get_agent_definition,
@@ -10,6 +10,7 @@ from src.config.agent_config import (
 __all__ = [
     "config",
     "Config",
+    "ModelQuantization",
     "AGENT_REGISTRY",
     "get_agent_definition",
     "get_all_agent_definitions",

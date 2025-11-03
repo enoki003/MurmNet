@@ -278,19 +278,31 @@ class BaseAgent(ABC):
             AgentExecutionError: If parsing fails
         """
         try:
+            # Remove markdown code block markers if present
+            cleaned = response.strip()
+            if cleaned.startswith('```json'):
+                cleaned = cleaned[7:]  # Remove ```json
+            elif cleaned.startswith('```'):
+                cleaned = cleaned[3:]  # Remove ```
+            if cleaned.endswith('```'):
+                cleaned = cleaned[:-3]  # Remove trailing ```
+            cleaned = cleaned.strip()
+            
             # Try to find JSON in the response
             # Look for content between first { and last }
-            start_idx = response.find('{')
-            end_idx = response.rfind('}')
+            start_idx = cleaned.find('{')
+            end_idx = cleaned.rfind('}')
             
             if start_idx == -1 or end_idx == -1:
                 raise ValueError("No JSON object found in response")
             
-            json_str = response[start_idx:end_idx + 1]
+            json_str = cleaned[start_idx:end_idx + 1]
+            
+            # Try to parse, handling potential multi-line issues
             parsed = json.loads(json_str)
             
             return parsed
             
         except (json.JSONDecodeError, ValueError) as e:
-            logger.error(f"Failed to parse JSON from response: {response[:200]}...")
+            logger.error(f"Failed to parse JSON from response: {response[:500]}...")
             raise AgentExecutionError(f"JSON parsing failed: {e}")
