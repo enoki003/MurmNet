@@ -38,6 +38,7 @@ class ModelQuantization(str, Enum):
     NONE = "none"
     INT8 = "int8"
     INT4 = "int4"
+    Q4 = "q4"
 
 
 class SystemConfig(BaseSettings):
@@ -60,7 +61,7 @@ class ModelConfig(BaseSettings):
     default_model_name: str = Field(default="meta-llama/Llama-3.2-3B-Instruct")
     model_cache_dir: Path = Field(default=Path("./models"))
     model_device: ModelDevice = Field(default=ModelDevice.CUDA)
-    model_quantization: ModelQuantization = Field(default=ModelQuantization.NONE)
+    model_quantization: ModelQuantization = Field(default=ModelQuantization.Q4)
     
     # Embedding model configuration
     embedding_model: str = Field(default="intfloat/multilingual-e5-large")

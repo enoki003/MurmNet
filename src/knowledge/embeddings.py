@@ -3,7 +3,7 @@ Embedding generation for text documents.
 Handles conversion of text to vector embeddings.
 """
 
-from typing import List
+from typing import List, Optional
 
 import torch
 from loguru import logger
@@ -104,7 +104,3 @@ class EmbeddingModel:
     def get_dimension(self) -> int:
         """Get the embedding dimension."""
         return self.dimension
-
-
-# Import Optional
-from typing import Optional

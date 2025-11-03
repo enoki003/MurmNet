@@ -4,10 +4,13 @@ Provides REST API endpoints for the MurmurNet system.
 """
 
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Optional
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from loguru import logger
 
@@ -15,6 +18,9 @@ from src.orchestrator import Orchestrator
 from src.knowledge import RAGSystem, ZIMParser
 from src.memory import LongTermMemory, ExperienceMemory
 from src.config import config
+from src.blackboard import blackboard
+from src.utils.agent_tracking import agent_tracker
+from src.utils.metrics import performance_metrics
 
 
 # Request/Response models
@@ -67,6 +73,16 @@ app.add_middleware(
 
 # Global orchestrator instance
 orchestrator: Optional[Orchestrator] = None
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+UI_STATIC_DIR = BASE_DIR / "webui" / "static"
+
+if UI_STATIC_DIR.exists():
+    app.mount(
+        "/ui/assets",
+        StaticFiles(directory=str(UI_STATIC_DIR)),
+        name="ui-static",
+    )
 
 
 @app.on_event("startup")
@@ -130,7 +146,16 @@ async def root():
         "message": "Welcome to MurmurNet API",
         "version": "1.0.0",
         "docs": "/docs",
+        "ui": "/ui",
     }
+
+
+@app.get("/ui", include_in_schema=False)
+async def ui_index():
+    """Serve the monitoring UI."""
+    if not UI_STATIC_DIR.exists():
+        raise HTTPException(status_code=404, detail="UI assets not available")
+    return FileResponse(UI_STATIC_DIR / "index.html")
 
 
 @app.get("/health", response_model=HealthResponse, tags=["General"])
@@ -220,6 +245,96 @@ async def get_statistics():
         raise HTTPException(status_code=503, detail="System not initialized")
     
     return orchestrator.get_statistics()
+
+
+@app.get("/ui/tasks", tags=["UI"])
+async def ui_tasks():
+    """Get summaries for dashboard task list."""
+    if orchestrator is None:
+        raise HTTPException(status_code=503, detail="System not initialized")
+
+    summaries = await blackboard.get_all_task_summaries()
+    activity_map = await agent_tracker.get_overview()
+
+    tasks = []
+    for summary in summaries:
+        task_id = summary["task_id"]
+        tasks.append({
+            **summary,
+            "activity": activity_map.get(task_id, {}),
+        })
+
+    return {"tasks": tasks}
+
+
+@app.get("/ui/task/{task_id}/blackboard", tags=["UI"])
+async def ui_task_blackboard(task_id: str, limit: int = 50):
+    """Get recent blackboard entries for a task."""
+    if orchestrator is None:
+        raise HTTPException(status_code=503, detail="System not initialized")
+
+    entries = await blackboard.read_entries(task_id=task_id, limit=limit)
+    if not entries:
+        summary = await blackboard.get_task_summary(task_id)
+        if summary is None:
+            raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+    data = []
+    for entry in entries[-limit:]:
+        preview = str(entry.content)
+        if len(preview) > 400:
+            preview = preview[:397] + "..."
+        data.append(
+            {
+                "entry_id": entry.entry_id,
+                "timestamp": entry.timestamp.isoformat(),
+                "agent_id": entry.agent_id,
+                "entry_type": entry.entry_type.value,
+                "content_preview": preview,
+                "metadata": entry.metadata.dict(),
+            }
+        )
+
+    return {"task_id": task_id, "entries": data}
+
+
+@app.get("/ui/metrics", tags=["UI"])
+async def ui_metrics():
+    """Get aggregate performance metrics for dashboard."""
+    if orchestrator is None:
+        raise HTTPException(status_code=503, detail="System not initialized")
+
+    performance = await performance_metrics.get_summary()
+    agent_stats = await agent_tracker.get_agent_stats()
+    system_stats = orchestrator.get_statistics()
+
+    return {
+        "performance": performance,
+        "agent_stats": agent_stats,
+        "system": system_stats,
+    }
+
+
+@app.post("/ui/query", tags=["UI"])
+async def ui_query(request: QueryRequest):
+    """Start a query asynchronously for the dashboard playground."""
+    if orchestrator is None:
+        raise HTTPException(status_code=503, detail="System not initialized")
+
+    task_id = await orchestrator.start_query(request.query)
+    return {"task_id": task_id, "status": "running"}
+
+
+@app.get("/ui/task/{task_id}/result", tags=["UI"])
+async def ui_task_result(task_id: str):
+    """Fetch the latest result for a task if available."""
+    if orchestrator is None:
+        raise HTTPException(status_code=503, detail="System not initialized")
+
+    result = await agent_tracker.get_result(task_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Result not ready")
+    return result
 
 
 @app.post("/knowledge/index", tags=["Knowledge"])

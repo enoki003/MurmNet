@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
+from json_repair import repair_json
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -21,6 +22,7 @@ from src.agents.llm import LanguageModel
 from src.blackboard import BlackboardSystem, EntryType, EntryMetadata
 from src.config import config
 from src.config.agent_config import AgentDefinition
+from src.utils.agent_tracking import agent_tracker
 
 
 class AgentExecutionError(Exception):
@@ -112,6 +114,7 @@ class BaseAgent(ABC):
             AgentExecutionError: If execution fails
         """
         logger.info(f"Agent {self.agent_name} starting execution for task {task_id}")
+        await agent_tracker.agent_started(task_id, self.agent_id)
         
         start_time = datetime.utcnow()
         
@@ -126,15 +129,30 @@ class BaseAgent(ABC):
             logger.info(
                 f"Agent {self.agent_name} completed in {execution_time:.2f}s"
             )
+            await agent_tracker.agent_completed(
+                task_id,
+                self.agent_id,
+                execution_time,
+            )
             
             return result
             
         except asyncio.TimeoutError:
             logger.error(f"Agent {self.agent_name} timed out after {self.timeout}s")
+            await agent_tracker.agent_failed(
+                task_id,
+                self.agent_id,
+                "timeout",
+            )
             raise AgentExecutionError(f"Agent {self.agent_name} timed out")
         
         except Exception as e:
             logger.error(f"Agent {self.agent_name} failed: {e}")
+            await agent_tracker.agent_failed(
+                task_id,
+                self.agent_id,
+                str(e),
+            )
             raise AgentExecutionError(f"Agent {self.agent_name} failed: {e}")
     
     @abstractmethod
@@ -277,32 +295,41 @@ class BaseAgent(ABC):
         Raises:
             AgentExecutionError: If parsing fails
         """
+        # Remove markdown code block markers if present
+        cleaned = response.strip()
+        if cleaned.startswith('```json'):
+            cleaned = cleaned[7:]
+        elif cleaned.startswith('```'):
+            cleaned = cleaned[3:]
+        if cleaned.endswith('```'):
+            cleaned = cleaned[:-3]
+        cleaned = cleaned.strip()
+
+        # Locate the JSON object bounds
+        start_idx = cleaned.find('{')
+        end_idx = cleaned.rfind('}')
+
+        if start_idx == -1 or end_idx == -1:
+            logger.error(f"Failed to locate JSON object in response: {response[:200]}...")
+            raise AgentExecutionError("JSON parsing failed: no JSON object found")
+
+        json_str = cleaned[start_idx:end_idx + 1]
+
         try:
-            # Remove markdown code block markers if present
-            cleaned = response.strip()
-            if cleaned.startswith('```json'):
-                cleaned = cleaned[7:]  # Remove ```json
-            elif cleaned.startswith('```'):
-                cleaned = cleaned[3:]  # Remove ```
-            if cleaned.endswith('```'):
-                cleaned = cleaned[:-3]  # Remove trailing ```
-            cleaned = cleaned.strip()
-            
-            # Try to find JSON in the response
-            # Look for content between first { and last }
-            start_idx = cleaned.find('{')
-            end_idx = cleaned.rfind('}')
-            
-            if start_idx == -1 or end_idx == -1:
-                raise ValueError("No JSON object found in response")
-            
-            json_str = cleaned[start_idx:end_idx + 1]
-            
-            # Try to parse, handling potential multi-line issues
-            parsed = json.loads(json_str)
-            
-            return parsed
-            
-        except (json.JSONDecodeError, ValueError) as e:
-            logger.error(f"Failed to parse JSON from response: {response[:500]}...")
-            raise AgentExecutionError(f"JSON parsing failed: {e}")
+            return json.loads(json_str)
+        except (json.JSONDecodeError, ValueError) as parse_error:
+            logger.warning(
+                "Initial JSON parsing failed, attempting repair with json_repair: {}",
+                parse_error,
+            )
+            try:
+                repaired = repair_json(json_str)
+                return json.loads(repaired)
+            except Exception as repair_error:
+                logger.error(
+                    "JSON repair failed. Original snippet: {}...",
+                    response[:200],
+                )
+                raise AgentExecutionError(
+                    f"JSON parsing failed after repair: {repair_error}"
+                ) from repair_error

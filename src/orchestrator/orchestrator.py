@@ -5,7 +5,7 @@ Manages agent execution and emergent collaboration.
 
 import asyncio
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
@@ -23,6 +23,8 @@ from src.config import config
 from src.config.agent_config import get_all_agent_definitions
 from src.knowledge import RAGSystem
 from src.memory import LongTermMemory, ExperienceMemory
+from src.utils.agent_tracking import agent_tracker
+from src.utils.metrics import performance_metrics
 
 
 class Orchestrator:
@@ -58,7 +60,7 @@ class Orchestrator:
         self.llm = LanguageModel()
         
         # Initialize agents
-        self.agents: Dict[str, any] = {}
+        self.agents: Dict[str, Any] = {}
         self._initialize_agents()
         
         # Configuration
@@ -117,25 +119,21 @@ class Orchestrator:
         )
         
         logger.info(f"Initialized {len(self.agents)} agents")
-    
-    async def process_query(self, user_query: str) -> Dict[str, any]:
-        """
-        Process a user query through the agent swarm.
-        
-        Args:
-            user_query: User's input query
-            
-        Returns:
-            Dict containing the final answer and metadata
-        """
-        start_time = datetime.utcnow()
-        
-        # Create new task
+
+    async def _prepare_task(self) -> str:
+        """Create blackboard task and initialize trackers."""
         state = await blackboard.create_task()
         task_id = state.task_id
-        
+        await agent_tracker.initialize_task(task_id)
+        await agent_tracker.update_task_status(task_id, TaskStatus.PENDING.value)
+        return task_id
+
+    async def _run_task(self, task_id: str, user_query: str) -> Dict[str, Any]:
+        """Execute the full task lifecycle for a query."""
+        start_time = datetime.utcnow()
+
         logger.info(f"Processing query for task {task_id}: {user_query[:100]}...")
-        
+
         try:
             # Write user input to blackboard
             await blackboard.write_entry(
@@ -144,65 +142,92 @@ class Orchestrator:
                 entry_type=EntryType.USER_INPUT,
                 content=user_query,
             )
-            
+
             # Update status
             await blackboard.update_status(task_id, TaskStatus.ANALYZING)
-            
+            await agent_tracker.update_task_status(task_id, TaskStatus.ANALYZING.value)
+
             # Execute agents in coordination
             await self._execute_agent_swarm(task_id)
-            
+
             # Get final answer
             final_answer_entries = await blackboard.read_entries(
                 task_id=task_id,
                 entry_type=EntryType.FINAL_ANSWER,
             )
-            
+
             if not final_answer_entries:
                 raise Exception("No final answer generated")
-            
+
             final_answer = final_answer_entries[-1].content
-            
+
             # Mark as completed
             await blackboard.update_status(task_id, TaskStatus.COMPLETED)
-            
+            await agent_tracker.finalize_task(task_id, TaskStatus.COMPLETED.value)
+
             # Calculate execution time
             execution_time = (datetime.utcnow() - start_time).total_seconds()
-            
+
             # Store experience
             await self._store_experience(task_id, user_query, final_answer, True, execution_time)
-            
+
             # Store important information in long-term memory
             await self._update_long_term_memory(task_id, user_query, final_answer)
-            
+
             logger.info(f"Query processed successfully in {execution_time:.2f}s")
-            
-            return {
+            await performance_metrics.record_query(task_id, True, execution_time)
+
+            result: Dict[str, Any] = {
                 "task_id": task_id,
                 "query": user_query,
                 "answer": final_answer,
                 "execution_time_seconds": execution_time,
                 "success": True,
             }
-            
+
         except Exception as e:
             logger.error(f"Query processing failed: {e}")
-            
+
             # Mark as failed
             await blackboard.update_status(task_id, TaskStatus.FAILED)
-            
+            await agent_tracker.finalize_task(task_id, TaskStatus.FAILED.value)
+
             # Store failed experience
             execution_time = (datetime.utcnow() - start_time).total_seconds()
             await self._store_experience(
                 task_id, user_query, f"Error: {str(e)}", False, execution_time
             )
-            
-            return {
+            await performance_metrics.record_query(task_id, False, execution_time)
+
+            result = {
                 "task_id": task_id,
                 "query": user_query,
                 "error": str(e),
                 "execution_time_seconds": execution_time,
                 "success": False,
             }
+
+        await agent_tracker.set_result(task_id, result)
+        return result
+
+    async def process_query(self, user_query: str) -> Dict[str, Any]:
+        """Process a query synchronously and return the result."""
+        task_id = await self._prepare_task()
+        return await self._run_task(task_id, user_query)
+
+    async def start_query(self, user_query: str) -> str:
+        """Start processing a query in the background and return the task id."""
+        task_id = await self._prepare_task()
+
+        async def runner() -> None:
+            try:
+                await self._run_task(task_id, user_query)
+            except Exception:
+                # Errors are handled inside _run_task; we silence propagation here.
+                logger.exception("Background query failed")
+
+        asyncio.create_task(runner())
+        return task_id
     
     async def _execute_agent_swarm(self, task_id: str) -> None:
         """
@@ -240,6 +265,7 @@ class Orchestrator:
             
             # Update status
             await blackboard.update_status(task_id, phase["status"])
+            await agent_tracker.update_task_status(task_id, phase["status"].value)
             
             # Execute agents in this phase (potentially in parallel)
             agent_tasks = []

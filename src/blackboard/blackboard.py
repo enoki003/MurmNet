@@ -308,6 +308,38 @@ class BlackboardSystem:
             "entry_types": entry_type_counts,
             "agent_activity": agent_counts,
         }
+
+    async def get_all_task_summaries(self) -> List[Dict[str, Any]]:
+        """Get summaries for all tasks."""
+        async with self._lock:
+            states = list(self._states.values())
+
+        summaries: List[Dict[str, Any]] = []
+        for state in states:
+            entry_type_counts: Dict[str, int] = {}
+            agent_counts: Dict[str, int] = {}
+
+            for entry in state.entries:
+                entry_type_str = entry.entry_type.value
+                entry_type_counts[entry_type_str] = (
+                    entry_type_counts.get(entry_type_str, 0) + 1
+                )
+                agent_counts[entry.agent_id] = agent_counts.get(entry.agent_id, 0) + 1
+
+            summaries.append(
+                {
+                    "task_id": state.task_id,
+                    "status": state.status.value,
+                    "created_at": state.created_at.isoformat(),
+                    "updated_at": state.updated_at.isoformat(),
+                    "total_entries": len(state.entries),
+                    "entry_types": entry_type_counts,
+                    "agent_activity": agent_counts,
+                }
+            )
+
+        summaries.sort(key=lambda item: item["updated_at"], reverse=True)
+        return summaries
     
     async def export_task_history(self, task_id: str) -> Optional[Dict[str, Any]]:
         """
