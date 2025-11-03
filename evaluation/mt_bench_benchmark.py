@@ -3,6 +3,7 @@ MT-Bench style multi-turn conversation evaluation.
 Tests dialogue coherence and instruction following.
 """
 
+import json
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -21,62 +22,39 @@ class MTBenchBenchmark(BaseBenchmark):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.benchmark_name = "MT-Bench"
-        
-        # Predefined multi-turn questions
-        self.questions = [
-            {
-                "category": "reasoning",
-                "turns": [
-                    "3つの箱があります。赤い箱には5個のりんご、青い箱には3個のりんご、緑の箱には2個のりんごが入っています。全部で何個のりんごがありますか？",
-                    "では、赤い箱から2個、青い箱から1個のりんごを取り出しました。今、箱の中には全部で何個のりんごが残っていますか？",
-                ],
-            },
-            {
-                "category": "writing",
-                "turns": [
-                    "「春」をテーマにした短い詩を書いてください。",
-                    "その詩をもとに、秋をテーマにしたバージョンも作ってください。",
-                ],
-            },
-            {
-                "category": "roleplay",
-                "turns": [
-                    "あなたは親切な図書館司書です。おすすめの本を3冊教えてください。",
-                    "その中で、初心者に最も適している本はどれですか？その理由も説明してください。",
-                ],
-            },
-            {
-                "category": "extraction",
-                "turns": [
-                    "次の文から人物名を抽出してください: 「太郎と花子は公園で遊んでいました。そこに次郎が来ました。」",
-                    "では、彼らがいた場所はどこですか？",
-                ],
-            },
-            {
-                "category": "math",
-                "turns": [
-                    "12 × 15 を計算してください。",
-                    "その答えを3で割ると、いくつになりますか？",
-                ],
-            },
-        ]
     
     async def load_dataset(self) -> List[Dict[str, Any]]:
-        """Load MT-Bench questions."""
+        """Load MT-Bench questions from downloaded file."""
         logger.info("Loading MT-Bench questions...")
         
-        questions = []
-        for i, item in enumerate(self.questions):
-            questions.append({
-                "id": f"mt_bench_{i}",
-                "category": item["category"],
-                "question": item["turns"][0],  # First turn
-                "second_turn": item["turns"][1],  # Second turn
-                "answer": None,  # No ground truth for MT-Bench
-            })
-        
-        logger.info(f"Loaded {len(questions)} MT-Bench questions")
-        return questions
+        try:
+            # Load from downloaded JSONL file
+            data_file = Path("evaluation/benchmarks/mt_bench_questions.jsonl")
+            
+            if not data_file.exists():
+                logger.error(f"MT-Bench data file not found: {data_file}")
+                logger.info("Please run: python evaluation/download_benchmarks.py")
+                return []
+            
+            questions = []
+            with open(data_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    item = json.loads(line)
+                    turns = item.get("turns", [])
+                    questions.append({
+                        "id": f"mt_bench_{item['question_id']}",
+                        "category": item.get("category", "general"),
+                        "question": turns[0] if len(turns) > 0 else "",
+                        "second_turn": turns[1] if len(turns) > 1 else "",
+                        "answer": None,  # No ground truth for MT-Bench
+                    })
+            
+            logger.info(f"Loaded {len(questions)} MT-Bench questions")
+            return questions
+            
+        except Exception as e:
+            logger.error(f"Failed to load MT-Bench questions: {e}")
+            return []
     
     def evaluate_answer(
         self,

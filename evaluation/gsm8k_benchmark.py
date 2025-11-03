@@ -3,11 +3,11 @@ GSM8K benchmark evaluation.
 Tests multi-step reasoning and mathematical problem solving.
 """
 
+import json
 import re
 from pathlib import Path
 from typing import Any, Dict, List
 
-from datasets import load_dataset
 from loguru import logger
 
 from evaluation.base_benchmark import BaseBenchmark
@@ -26,21 +26,28 @@ class GSM8KBenchmark(BaseBenchmark):
         self.benchmark_name = "GSM8K"
     
     async def load_dataset(self) -> List[Dict[str, Any]]:
-        """Load GSM8K dataset."""
+        """Load GSM8K dataset from downloaded file."""
         logger.info("Loading GSM8K dataset...")
         
         try:
-            # Load from Hugging Face datasets
-            dataset = load_dataset("gsm8k", "main", split="test")
+            # Load from downloaded JSONL file
+            data_file = Path("evaluation/benchmarks/gsm8k_test.jsonl")
+            
+            if not data_file.exists():
+                logger.error(f"GSM8K data file not found: {data_file}")
+                logger.info("Please run: python evaluation/download_benchmarks.py")
+                return []
             
             questions = []
-            for i, item in enumerate(dataset):
-                questions.append({
-                    "id": f"gsm8k_{i}",
-                    "question": item["question"],
-                    "answer": self._extract_answer(item["answer"]),
-                    "full_solution": item["answer"],
-                })
+            with open(data_file, 'r', encoding='utf-8') as f:
+                for i, line in enumerate(f):
+                    item = json.loads(line)
+                    questions.append({
+                        "id": f"gsm8k_{i}",
+                        "question": item["question"],
+                        "answer": self._extract_answer(item["answer"]),
+                        "full_solution": item["answer"],
+                    })
             
             logger.info(f"Loaded {len(questions)} GSM8K questions")
             return questions

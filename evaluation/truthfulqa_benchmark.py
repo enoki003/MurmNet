@@ -3,10 +3,10 @@ TruthfulQA benchmark evaluation.
 Tests the model's ability to avoid hallucinations and provide truthful answers.
 """
 
+import json
 from pathlib import Path
 from typing import Any, Dict, List
 
-from datasets import load_dataset
 from loguru import logger
 
 from evaluation.base_benchmark import BaseBenchmark
@@ -25,22 +25,44 @@ class TruthfulQABenchmark(BaseBenchmark):
         self.benchmark_name = "TruthfulQA"
     
     async def load_dataset(self) -> List[Dict[str, Any]]:
-        """Load TruthfulQA dataset."""
+        """Load TruthfulQA dataset from downloaded file."""
         logger.info("Loading TruthfulQA dataset...")
         
         try:
-            # Load from Hugging Face datasets
-            dataset = load_dataset("truthful_qa", "generation", split="validation")
+            # Load from downloaded JSONL file
+            data_file = Path("evaluation/benchmarks/truthfulqa_test.jsonl")
+            
+            if not data_file.exists():
+                logger.error(f"TruthfulQA data file not found: {data_file}")
+                logger.info("Please run: python evaluation/download_benchmarks.py")
+                return []
             
             questions = []
-            for i, item in enumerate(dataset):
-                questions.append({
-                    "id": f"truthfulqa_{i}",
-                    "question": item["question"],
-                    "answer": item.get("best_answer", ""),
-                    "correct_answers": item.get("correct_answers", []),
-                    "incorrect_answers": item.get("incorrect_answers", []),
-                })
+            with open(data_file, 'r', encoding='utf-8') as f:
+                for i, line in enumerate(f):
+                    item = json.loads(line)
+                    mc1 = item.get("mc1_targets", {})
+                    mc2 = item.get("mc2_targets", {})
+                    
+                    # Extract correct and incorrect choices
+                    correct_answers = []
+                    incorrect_answers = []
+                    
+                    if mc1.get("labels"):
+                        for j, label in enumerate(mc1["labels"]):
+                            if j < len(mc1.get("choices", [])):
+                                if label == 1:
+                                    correct_answers.append(mc1["choices"][j])
+                                else:
+                                    incorrect_answers.append(mc1["choices"][j])
+                    
+                    questions.append({
+                        "id": f"truthfulqa_{i}",
+                        "question": item["question"],
+                        "answer": correct_answers[0] if correct_answers else "",
+                        "correct_answers": correct_answers,
+                        "incorrect_answers": incorrect_answers,
+                    })
             
             logger.info(f"Loaded {len(questions)} TruthfulQA questions")
             return questions
