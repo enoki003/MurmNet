@@ -116,6 +116,10 @@ class KnowledgeBaseConfig(BaseSettings):
     zim_file_path: Optional[Path] = Field(default=None)
     chunk_size: int = Field(default=512)
     chunk_overlap: int = Field(default=50)
+    retrieval_top_k: int = Field(default=5, gt=0)
+    retrieval_score_threshold: float = Field(default=0.45, ge=0.0, le=1.0)
+    embedding_cache_size: int = Field(default=512, ge=0)
+    retrieval_debug: bool = Field(default=False)
     
     model_config = SettingsConfigDict(
         env_file=".env",

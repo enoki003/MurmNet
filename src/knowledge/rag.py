@@ -158,6 +158,25 @@ class RAGSystem:
             RetrievedDocument(chunk=chunk, score=score)
             for chunk, score in results
         ]
+
+        # Supplement with direct ZIM search when vector DB lacks results
+        if len(retrieved_docs) < top_k and self.zim_parser:
+            try:
+                existing_ids = {doc.chunk.chunk_id for doc in retrieved_docs}
+                zim_results = self.zim_parser.retrieve_chunks(
+                    query=query,
+                    top_k=top_k - len(retrieved_docs),
+                )
+
+                for chunk, score in zim_results:
+                    if chunk.chunk_id in existing_ids:
+                        continue
+                    retrieved_docs.append(RetrievedDocument(chunk=chunk, score=score))
+                    existing_ids.add(chunk.chunk_id)
+                    if len(retrieved_docs) >= top_k:
+                        break
+            except Exception as exc:  # pragma: no cover - defensive guard
+                logger.debug(f"ZIM fallback retrieval failed: {exc}")
         
         logger.debug(
             f"Retrieved {len(retrieved_docs)} documents for query: '{query[:50]}...'"

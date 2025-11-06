@@ -145,6 +145,25 @@ class KnowledgeRetrieverAgent(BaseAgent):
         super().__init__(*args, **kwargs)
         self.rag_system = rag_system
         self.long_term_memory = long_term_memory
+
+    async def can_execute(self, task_id: str) -> bool:
+        """Determine whether retrieval should run for this task."""
+        if not await super().can_execute(task_id):
+            return False
+
+        rag_available = self.rag_system is not None
+        memory_available = (
+            self.long_term_memory is not None
+            and self.long_term_memory.get_memory_count() > 0
+        )
+
+        if not rag_available and not memory_available:
+            logger.debug(
+                "Skipping knowledge retrieval: no RAG system or long-term memory available"
+            )
+            return False
+
+        return True
     
     async def _execute_impl(self, task_id: str) -> List[Dict[str, Any]]:
         """Execute knowledge retrieval."""
@@ -192,6 +211,12 @@ class KnowledgeRetrieverAgent(BaseAgent):
                 )
                 memory_entries.extend(memories)
         
+        if not rag_docs and not memory_entries:
+            logger.debug(
+                "Knowledge retrieval skipped: no documents or memories available"
+            )
+            return []
+
         # Format retrieved knowledge
         retrieved_knowledge_text = ""
         
@@ -207,9 +232,6 @@ class KnowledgeRetrieverAgent(BaseAgent):
             retrieved_knowledge_text += self.long_term_memory.format_memories(
                 memory_entries[:3]
             )
-        
-        if not retrieved_knowledge_text:
-            retrieved_knowledge_text = "関連する知識が見つかりませんでした。"
         
         # Prepare context for LLM to organize the knowledge
         context = {
