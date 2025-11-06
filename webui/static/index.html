@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>MurmurNet Control Room</title>
+  <link rel="stylesheet" href="/ui/assets/styles.css">
+</head>
+<body>
+  <header>
+    <h1>MurmurNet Control Room</h1>
+    <p class="subtitle">Live view of agent activity, blackboard state, and model performance.</p>
+  </header>
+
+  <main>
+    <section class="panel" id="playground-panel">
+      <h2>Query Playground</h2>
+      <form id="playground-form">
+        <label for="playground-input">Ask the swarm</label>
+        <textarea id="playground-input" rows="4" placeholder="例: Explain the MurmurNet agent architecture."></textarea>
+        <div class="form-actions">
+          <button type="submit">Send</button>
+          <span id="playground-status"></span>
+        </div>
+      </form>
+      <div id="playground-output" class="panel-block"></div>
+    </section>
+    <section class="panel" id="metrics-panel">
+      <h2>System Metrics</h2>
+      <div id="metrics-summary" class="grid"></div>
+      <div id="agent-stats" class="panel-block"></div>
+    </section>
+
+    <section class="panel" id="tasks-panel">
+      <div class="panel-header">
+        <h2>Tasks</h2>
+        <span id="task-count"></span>
+      </div>
+      <div id="tasks-list"></div>
+    </section>
+
+    <section class="panel" id="blackboard-panel">
+      <div class="panel-header">
+        <h2>Blackboard</h2>
+        <span id="blackboard-task"></span>
+      </div>
+      <div id="blackboard-entries"></div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Updated every 5 seconds. Select a task to inspect its blackboard timeline.</span>
+  </footer>
+
+  <script src="/ui/assets/app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #0f172a;
+  color: #e2e8f0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, #1e293b, #334155);
+  border-bottom: 1px solid #1f2937;
+}
+
+header h1 {
+  margin: 0 0 0.4rem 0;
+  font-size: 1.8rem;
+}
+
+header .subtitle {
+  margin: 0;
+  color: #94a3b8;
+}
+
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  padding: 1.5rem 2rem;
+}
+
+.panel {
+  background: #1e293b;
+  border: 1px solid #26364d;
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.35);
+}
+
+.panel h2 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.25rem;
+}
+
+.panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.panel label {
+  font-size: 0.85rem;
+  color: #cbd5f5;
+}
+
+.panel textarea {
+  background: #0f172a;
+  border: 1px solid #1f2a38;
+  border-radius: 8px;
+  color: #e2e8f0;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.95rem;
+  resize: vertical;
+}
+
+.panel textarea:focus {
+  outline: none;
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px #38bdf8;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.form-actions button {
+  background: #38bdf8;
+  color: #0f172a;
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.form-actions button:hover {
+  transform: translateY(-1px);
+}
+
+.form-actions span {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.75rem;
+}
+
+.panel-block {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #334155;
+}
+
+.panel pre {
+  background: #0b1220;
+  border: 1px solid #1f2a38;
+  border-radius: 8px;
+  padding: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.9rem;
+  color: #e2e8f0;
+}
+
+.agent-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.metric-card {
+  background: #0f172a;
+  border: 1px solid #1f2a38;
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.metric-card span {
+  display: block;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.metric-card strong {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 1.2rem;
+}
+
+#tasks-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.task-card {
+  background: #0f172a;
+  border: 1px solid #1f2a38;
+  border-radius: 10px;
+  padding: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.task-card.active {
+  border-color: #38bdf8;
+  transform: translateY(-2px);
+}
+
+.task-card:hover {
+  border-color: #38bdf8;
+}
+
+.task-status {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #38bdf8;
+}
+
+.task-meta {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: #1f2937;
+  color: #cbd5f5;
+  font-size: 0.75rem;
+}
+
+#blackboard-entries {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.blackboard-entry {
+  background: #0f172a;
+  border: 1px solid #1f2a38;
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.blackboard-entry .entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+}
+
+.blackboard-entry .entry-header span {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.blackboard-entry p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+footer {
+  padding: 1rem 2rem;
+  background: #0b1220;
+  border-top: 1px solid #1f2937;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.error {
+  color: #f87171;
+}
+
+@media (max-width: 768px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+}

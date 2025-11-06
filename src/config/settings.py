@@ -58,15 +58,20 @@ class SystemConfig(BaseSettings):
 class ModelConfig(BaseSettings):
     """Model configuration."""
     
-    default_model_name: str = Field(default="meta-llama/Llama-3.2-3B-Instruct")
+    default_model_name: str = Field(default="google/gemma-3-1b-it-qat-q4_0-gguf")
     model_cache_dir: Path = Field(default=Path("./models"))
     model_device: ModelDevice = Field(default=ModelDevice.CUDA)
     model_quantization: ModelQuantization = Field(default=ModelQuantization.Q4)
     
     # Embedding model configuration
-    embedding_model: str = Field(default="intfloat/multilingual-e5-large")
+    embedding_model: str = Field(default="sentence-transformers/all-MiniLM-L6-v2")
     embedding_device: ModelDevice = Field(default=ModelDevice.CUDA)
     embedding_batch_size: int = Field(default=32)
+
+    # Ollama configuration
+    ollama_base_url: str = Field(default="http://localhost:11434")
+    ollama_model: str = Field(default="gemma3:1b")
+    ollama_timeout_seconds: int = Field(default=120)
     
     model_config = SettingsConfigDict(
         env_file=".env",
