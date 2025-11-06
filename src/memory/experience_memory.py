@@ -47,6 +47,7 @@ class ExperienceMemory:
         self.experiences: List[ExperienceEntry] = []
         
         self.top_k = config.memory.experience_memory_top_k
+    self.similarity_threshold = config.memory.experience_similarity_threshold
         
         logger.info("Experience memory system initialized")
         
@@ -159,6 +160,8 @@ class ExperienceMemory:
             # Find corresponding experience
             experience = self._get_experience_by_id(chunk.chunk_id)
             if experience:
+                if score < self.similarity_threshold:
+                    continue
                 # Filter by success if requested
                 if success_only and not experience.success:
                     continue
@@ -170,7 +173,7 @@ class ExperienceMemory:
         
         logger.debug(
             f"Retrieved {len(retrieved_experiences)} experiences "
-            f"(success_only={success_only})"
+            f"(success_only={success_only}, threshold={self.similarity_threshold:.2f})"
         )
         
         return retrieved_experiences

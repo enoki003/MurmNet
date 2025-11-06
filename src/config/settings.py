@@ -101,6 +101,7 @@ class MemoryConfig(BaseSettings):
     memory_db_path: Path = Field(default=Path("./data/memory_db"))
     long_term_memory_top_k: int = Field(default=3)
     experience_memory_top_k: int = Field(default=3)
+    experience_similarity_threshold: float = Field(default=0.6, ge=0.0, le=1.0)
     
     model_config = SettingsConfigDict(
         env_file=".env",
